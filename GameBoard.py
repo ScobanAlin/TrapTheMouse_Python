@@ -6,6 +6,7 @@ class GameBoard:
         self.game_type = game_type
         self.difficulty = difficulty
         self.turn = 0
+        self.current_player = "walls"
 
         self.mouse_pos = (self.SIZE // 2, self.SIZE // 2)
         self.walls = set()
@@ -43,6 +44,14 @@ class GameBoard:
     def is_free(self, pos):
         return self.is_inside_board(pos) and pos not in self.walls
 
+    def is_wall_turn(self):
+        return self.current_player == "walls"
+
+    def is_mouse_turn(self):
+        return self.current_player == "mouse"
+
+    def switch_player(self):
+        self.current_player = "mouse" if self.current_player == "walls" else "walls"
 
 
     def next_turn(self):
@@ -68,11 +77,7 @@ class GameBoard:
         return x == 0 or y == 0 or x == self.SIZE - 1 or y == self.SIZE - 1
 
     def mouse_trapped(self):
-        for dx, dy in self.get_neighbors():
-            nx, ny = self.mouse_pos[0] + dx, self.mouse_pos[1] + dy
-            if self.is_free((nx, ny)):
-                return False
-        return True
+        return len(self.get_neighbors()) == 0
 
     def get_neighbors(self, pos=None):
         if pos is None:
