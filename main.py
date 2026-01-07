@@ -1,7 +1,7 @@
 import tkinter as tk
 from GameBoard import GameBoard
 from GameBoardUI import GameBoardUI
-
+import json
 class TrapTheMouseApp(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -11,6 +11,9 @@ class TrapTheMouseApp(tk.Tk):
         self.focus_force()
         self.current_frame = None
         self.show_main_menu()
+
+    def load_game(self, board):
+        self.switch_frame(GameBoardUI, board)
 
     def switch_frame(self, frame_class, *args):
         if self.current_frame is not None:
@@ -68,10 +71,25 @@ class MainMenu(tk.Frame):
                   command= lambda: master.quit()).pack(pady=10)
 
 class SavedGamesMenu(tk.Frame):
+    SAVE_FILE = "saves.json"
+
     def __init__(self, master):
         super().__init__(master)
 
-        tk.Label(self, text="Saved Games", font=("Arial", 18)).pack(pady=20)
+        tk.Label(self, text="Saved Games", font=("Arial", 18, "bold")).pack(pady=20)
+
+        saves = self._load_all_saves()
+
+        if not saves:
+            tk.Label(self, text="No saved games found.").pack(pady=10)
+        else:
+            for name in saves:
+                tk.Button(
+                    self,
+                    text=name,
+                    width=30,
+                    command=lambda n=name: self._load_save(n)
+                ).pack(pady=5)
 
         tk.Button(
             self,
@@ -79,6 +97,27 @@ class SavedGamesMenu(tk.Frame):
             width=20,
             command=master.show_main_menu
         ).pack(pady=20)
+
+    def _load_all_saves(self):
+        try:
+            with open(self.SAVE_FILE, "r") as f:
+                content = f.read().strip()
+                if not content:
+                    return {}
+                return json.loads(content)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {}
+
+    def _load_save(self, name):
+        saves = self._load_all_saves()
+        data = saves.get(name)
+
+        if not data:
+            return
+
+        board = GameBoard.from_dict(data)
+        self.master.load_game(board)
+
 
 class SingleplayerMenu(tk.Frame):
     def __init__(self, master):
@@ -121,7 +160,7 @@ class WinScene(tk.Frame):
 
         tk.Label(
             self,
-            text="You Win! 🎉\nMouse Trapped",
+            text="Wall Player Wins",
             font=("Arial", 24, "bold"),
             fg="green"
         ).pack(pady=40)
@@ -140,7 +179,7 @@ class LoseScene(tk.Frame):
 
         tk.Label(
             self,
-            text="You Lose 😢\nMouse Escaped",
+            text="Mouse Player Wins",
             font=("Arial", 24, "bold"),
             fg="red"
         ).pack(pady=40)

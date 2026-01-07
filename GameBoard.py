@@ -7,10 +7,9 @@ class GameBoard:
         self.difficulty = difficulty
         self.turn = 0
         self.current_player = "walls"
-
+        self.score = 20000
         self.mouse_pos = (self.SIZE // 2, self.SIZE // 2)
         self.walls = set()
-
         self._init_walls()
 
 
@@ -57,11 +56,10 @@ class GameBoard:
     def next_turn(self):
         self.turn += 1
 
-
-
     def place_wall(self, pos):
         if self.is_free(pos) and pos != self.mouse_pos:
             self.walls.add(pos)
+            self.score = max(0, self.score - 50)
             return True
         return False
 
@@ -130,3 +128,23 @@ class GameBoard:
 
         best_move = min(moves, key=distance_to_edge)
         self.mouse_pos = best_move
+
+    def to_dict(self):
+        return {
+            "game_type": self.game_type,
+            "difficulty": self.difficulty,
+            "turn": self.turn,
+            "current_player": self.current_player,
+            "mouse_pos": self.mouse_pos,
+            "walls": list(self.walls),
+            "score": self.score,
+        }
+
+    def from_dict(data):
+        board = GameBoard(data["game_type"], data["difficulty"])
+        board.turn = data["turn"]
+        board.current_player = data["current_player"]
+        board.mouse_pos = tuple(data["mouse_pos"])
+        board.walls = set(tuple(w) for w in data["walls"])
+        board.score = data["score"]
+        return board
