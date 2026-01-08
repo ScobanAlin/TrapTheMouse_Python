@@ -1,18 +1,23 @@
 import tkinter as tk
+from tkinter import ttk
+
 import math
 import json
+
 
 class GameBoardUI(tk.Frame):
     HEX_RADIUS = 28
     PADDING = 50
     SAVE_FILE = "saves.json"
-
+    DOT_RADIUS = 5
+    DOT_COLOR = "#333333"
     COLOR_EMPTY = "#c8f26d"
     COLOR_WALL = "#8b4513"
     COLOR_MOUSE = "#ff4d4d"
     COLOR_OUTLINE = "#6aa84f"
     COLOR_HOVER = "#ffd966"
     COLOR_WALL_HOVER = "#93c47d"
+
     def __init__(self, master, board):
         super().__init__(master, bg="#9acd32")
         self.board = board
@@ -23,9 +28,22 @@ class GameBoardUI(tk.Frame):
 
         self.canvas = tk.Canvas(self.main, bg="#9acd32", width=600, highlightthickness=0)
         self.canvas.pack(side="left", fill="both", expand=True)
+        style = ttk.Style()
+        style.theme_use("aqua")
 
-        self.side = tk.Frame(self.main, width=200, bg="#9acd32")
-        self.side.pack(side="right", fill="y")
+        style.configure(
+            "Game.TButton",
+            font=("Segoe UI", 11),
+            padding=10
+        )
+
+        style.map(
+            "Game.TButton",
+            background=[("active", "#b6d7a8")]
+        )
+
+        self.side = ttk.Frame(self.main)
+        self.side.pack(side="right", fill="y", padx=0)
 
         self._build_side_panel()
 
@@ -39,29 +57,38 @@ class GameBoardUI(tk.Frame):
         self.draw_board()
 
     def _build_side_panel(self):
-        tk.Label(self.side, text="Game Info", font=("Arial", 16, "bold"), bg="#9acd32").pack(pady=10)
-
-        self.info = tk.Label(self.side, bg="#9acd32")
+        ttk.Label(self.side, text="Game Info", font=("Arial", 16, "bold")).pack(pady=10)
+        ttk.Label
+        self.info = ttk.Label(self.side)
         self.info.pack(pady=5)
 
-        self.score = tk.Label(self.side, bg="#9acd32")
+        self.score = ttk.Label(self.side)
         self.score.pack(pady=5)
-        tk.Frame(self.side, bg="#9acd32").pack(expand=True, fill="both")
+        tk.Frame(self.side, bg="#323131").pack(expand=True, fill="both")
 
-        btn = tk.Button(
+        ttk.Button(
+            self.side,
+            text="Undo",
+            width=18,
+            command=self.undo_move
+        ).pack(pady=4)
+
+        ttk.Button(
+            self.side,
+            text="Redo",
+            width=18,
+            command=self.redo_move
+        ).pack(pady=4)
+
+        ttk.Button(
             self.side,
             text="Go Back",
-            bg="#9acd32",
-            activebackground="#b6d7a8",
-            relief="flat",
-            bd=0,
-            highlightthickness=0,
             command=self.confirm_exit
-        )
-        btn.pack(pady=10)
+        ).pack(pady=10)
+
     def update_info(self):
         self.info.config(
-            text=f"Mode: {self.board.game_type}\nTurn: {self.board.current_player.upper()}"
+            text=f"Mode: {self.board.game_type}\nDifficulty: {self.board.difficulty}\nTurn: {self.board.current_player.upper()}"
         )
         self.score.config(text=f"Score: {self.board.score}")
 
@@ -72,32 +99,42 @@ class GameBoardUI(tk.Frame):
         modal.transient(self)
         modal.grab_set()
 
-        tk.Label(
+        ttk.Label(
             modal,
             text="Do you want to save the game\nbefore exiting?",
             font=("Arial", 11)
         ).pack(pady=15)
 
-        tk.Button(
+        ttk.Button(
             modal,
             text="Save & Exit",
             width=20,
             command=lambda: self._open_save_then_exit(modal)
         ).pack(pady=5)
 
-        tk.Button(
+        ttk.Button(
             modal,
             text="Exit Without Saving",
             width=20,
             command=lambda: self._exit_to_menu(modal)
         ).pack(pady=5)
 
-        tk.Button(
+        ttk.Button(
             modal,
             text="Cancel",
             width=20,
             command=modal.destroy
         ).pack(pady=5)
+
+    def undo_move(self):
+        if self.board.undo():
+            self.hovered_cell = None
+            self.draw_board()
+
+    def redo_move(self):
+        if self.board.redo():
+            self.hovered_cell = None
+            self.draw_board()
 
     def _exit(self, modal, save):
         if save:
@@ -112,13 +149,13 @@ class GameBoardUI(tk.Frame):
         modal.transient(self)
         modal.grab_set()
 
-        tk.Label(modal, text="Save name:").pack(pady=10)
+        ttk.Label(modal, text="Save name:").pack(pady=10)
 
         name_entry = tk.Entry(modal, width=30)
         name_entry.pack(pady=5)
         name_entry.focus()
 
-        tk.Button(
+        ttk.Button(
             modal,
             text="Save",
             command=lambda: self._save_with_name(
@@ -150,6 +187,7 @@ class GameBoardUI(tk.Frame):
         if self.hovered_cell is not None:
             self.hovered_cell = None
             self.draw_board()
+
     def draw_board(self):
         self.canvas.delete("all")
 
@@ -166,8 +204,8 @@ class GameBoardUI(tk.Frame):
             valid_wall_moves = [
                 (r, c)
                 for r in range(self.board.SIZE)
-                for c in range(self.board.SIZE)
-                if self.board.is_free((r, c)) and (r, c) != self.board.mouse_pos
+                    for c in range(self.board.SIZE)
+                        if self.board.is_free((r, c)) and (r, c) != self.board.mouse_pos
             ]
 
         for row in range(self.board.SIZE):
@@ -175,9 +213,7 @@ class GameBoardUI(tk.Frame):
                 cx, cy = self.hex_center(row, col)
                 cell = (row, col)
 
-                if cell == self.board.mouse_pos:
-                    color = self.COLOR_MOUSE
-                elif cell in self.board.walls:
+                if cell in self.board.walls:
                     color = self.COLOR_WALL
                 elif cell == self.hovered_cell and cell in valid_mouse_moves:
                     color = self.COLOR_HOVER
@@ -185,8 +221,29 @@ class GameBoardUI(tk.Frame):
                     color = self.COLOR_WALL_HOVER
                 else:
                     color = self.COLOR_EMPTY
-
+                self.draw_hex(cx + 2, cy + 2, self.HEX_RADIUS, "#999999")
                 self.draw_hex(cx, cy, self.HEX_RADIUS, color)
+                if cell == self.board.mouse_pos:
+                    self.canvas.create_text(
+                        cx,
+                        cy,
+                        text="🐭",
+                        font=("Apple Color Emoji", 30),
+                    )
+
+                if (
+                        self.board.game_type == "1vs1"
+                        and self.board.is_mouse_turn()
+                        and cell in valid_mouse_moves
+                ):
+                    self.canvas.create_oval(
+                        cx - self.DOT_RADIUS,
+                        cy - self.DOT_RADIUS,
+                        cx + self.DOT_RADIUS,
+                        cy + self.DOT_RADIUS,
+                        fill=self.DOT_COLOR,
+                        outline=""
+                    )
         self.update_info()
 
     def draw_hex(self, cx, cy, r, fill):
@@ -218,11 +275,9 @@ class GameBoardUI(tk.Frame):
         if pos is None:
             return
 
-
         if self.board.game_type == "singleplayer":
             if self.board.place_wall(pos):
 
-                prev_pos = self.board.mouse_pos
                 self.board.move_mouse_ai()
 
                 if self.board.mouse_escaped():
@@ -235,7 +290,6 @@ class GameBoardUI(tk.Frame):
                     self.master.show_win_scene()
                     return
 
-                self.board.next_turn()
                 self.draw_board()
 
 
@@ -243,7 +297,6 @@ class GameBoardUI(tk.Frame):
         else:
             if self.board.is_wall_turn():
                 if self.board.place_wall(pos):
-                    self.board.switch_player()
                     if self.board.mouse_trapped():
                         self.draw_board()
                         self.master.show_win_scene()
@@ -261,7 +314,6 @@ class GameBoardUI(tk.Frame):
                         self.draw_board()
                         self.master.show_lose_scene()
                         return
-                    self.board.switch_player()
                     self.draw_board()
 
     def pixel_to_hex(self, x, y):
