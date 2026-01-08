@@ -2,9 +2,11 @@ import random
 
 
 class GameBoard:
+    """GameBoard class , the engine of the game"""
     SIZE = 11
 
     def __init__(self, game_type, difficulty=None):
+        """Initialize the game board"""
         self.game_type = game_type
         self.difficulty = difficulty
         self.turn = 0
@@ -17,10 +19,12 @@ class GameBoard:
         self.redo_stack = []
 
     def save_state(self):
+        """Save the game board state"""
         self.undo_stack.append(self.to_dict())
         self.redo_stack.clear()
 
     def undo(self):
+        """Undo the current game state"""
         if not self.undo_stack:
             return False
 
@@ -30,6 +34,7 @@ class GameBoard:
         return True
 
     def redo(self):
+        """Redo the current game state"""
         if not self.redo_stack:
             return False
 
@@ -41,6 +46,7 @@ class GameBoard:
 
 
     def _init_walls(self):
+        """Initializing the walls"""
         if self.difficulty == "easy":
             wall_count = random.randint(19, 25)
         elif self.difficulty == "medium":
@@ -61,22 +67,28 @@ class GameBoard:
 
 
     def is_inside_board(self, pos):
+        """Query to see if a position is inside the board"""
         r, c = pos
         return 0 <= r < self.SIZE and 0 <= c < self.SIZE
 
     def is_free(self, pos):
+        """Query to see if a position is not a wall"""
         return self.is_inside_board(pos) and pos not in self.walls
 
     def is_wall_turn(self):
+        """Query to see if it is wall player turn"""
         return self.current_player == "walls"
 
     def is_mouse_turn(self):
+        """Query to see if it is mouse player turn"""
         return self.current_player == "mouse"
 
     def switch_player(self):
+        """Switch the current_player"""
         self.current_player = "mouse" if self.current_player == "walls" else "walls"
 
     def place_wall(self, pos):
+        """Place a wall on the board"""
         if self.game_type == "1vs1" and not self.is_wall_turn():
             return False
 
@@ -93,6 +105,7 @@ class GameBoard:
         return False
 
     def move_mouse(self, new_pos):
+        """Move mouse for 1vs1"""
         if self.game_type == "1vs1" and not self.is_mouse_turn():
             return False
 
@@ -108,17 +121,21 @@ class GameBoard:
         return False
 
     def mouse_escaped(self):
+        """Querry to see if the mouse escaped in singleplayer"""
         r, c = self.mouse_pos
         return r == 0 or c == 0 or r == self.SIZE - 1 or c == self.SIZE - 1
 
     def mouse_escaped_pos(self, pos):
+        """Querry to see if the mouse escaped based on a position for 1vs1"""
         r, c = pos
         return r == 0 or c == 0 or r == self.SIZE - 1 or c == self.SIZE - 1
 
     def mouse_trapped(self):
+        """Querry to see if the mouse escaped"""
         return len(self.get_neighbors()) == 0
 
     def get_neighbors(self, pos=None):
+        """Returns the neighbors of the current position if they are not walls """
         if pos is None:
             pos = self.mouse_pos
 
@@ -137,6 +154,7 @@ class GameBoard:
         return neighbors
 
     def move_mouse_ai(self):
+        """Move the mouse ai , separates the game difficulty"""
         if self.game_type != "singleplayer":
             return
 
@@ -152,22 +170,26 @@ class GameBoard:
         self.turn += 1
 
     def move_greedy(self):
+        """Move the game difficulty easy , using greedy , shortest path to margin"""
         moves = self.get_neighbors()
         if not moves:
             return
 
         def dist_to_edge(p):
+            """Returns minimum distance from the mouse to the margin"""
             r, c = p
             return min(r, c, self.SIZE - 1 - r, self.SIZE - 1 - c)
 
         self.mouse_pos = min(moves, key=dist_to_edge)
 
     def _fallback_move(self):
+        """Fallback move for bfs and a* when mouse is entrapped but still able to move, maximizez lifetime"""
         neighbors = self.get_neighbors()
         if not neighbors:
             return
 
         def survival_score(pos):
+            """Kind of an heuristic for surviving most"""
             return (
                     -self._trap_penalty(pos)
                     - self._wall_density_penalty(pos)
@@ -177,6 +199,7 @@ class GameBoard:
         self.mouse_pos = max(neighbors, key=survival_score)
 
     def move_bfs(self):
+        """Move the game difficulty easy , using BFS, takes the first step from the first path to exit found"""
         start = self.mouse_pos
         queue = [(start, [])]
         visited = {start}
@@ -197,13 +220,16 @@ class GameBoard:
         self._fallback_move()
 
     def _distance_to_edge(self, pos):
+        """Returns the distance to the edge of the given position"""
         r, c = pos
         return min(r, c, self.SIZE - 1 - r, self.SIZE - 1 - c)
 
     def _trap_penalty(self, pos):
+        """Returns the trap penalty for the given position for the heuristic"""
         return (6 - len(self.get_neighbors(pos))) * 2
 
     def _wall_density_penalty(self, pos):
+        """Returns the wall density penalty for the given position for the heuristic ,"""
         r, c = pos
         penalty = 0
         for dr in range(-2, 3):
@@ -214,6 +240,7 @@ class GameBoard:
         return penalty
 
     def _heuristic(self, pos):
+        """"Returns the heuristic for the given position"""
         return (
             self._distance_to_edge(pos)
             + self._trap_penalty(pos)
@@ -221,6 +248,7 @@ class GameBoard:
         )
 
     def move_astar(self):
+        """"Move the game difficulty easy , using A* """
         start = self.mouse_pos
         open_list = [(self._heuristic(start), 0, start, [])]
         visited = {}
@@ -248,6 +276,7 @@ class GameBoard:
 
 
     def to_dict(self):
+        """Makes a GameBoard object into a dictionary for saving into json"""
         return {
             "game_type": self.game_type,
             "difficulty": self.difficulty,
@@ -260,11 +289,13 @@ class GameBoard:
 
     @staticmethod
     def from_dict(data):
+        """parses a GameBoard object from json into a GameBoard object"""
         board = GameBoard(data["game_type"], data["difficulty"])
         board._restore_from_dict(data)
         return board
 
     def _restore_from_dict(self, data):
+        """Helper function for extracting data"""
         self.game_type = data["game_type"]
         self.difficulty = data["difficulty"]
         self.turn = data["turn"]

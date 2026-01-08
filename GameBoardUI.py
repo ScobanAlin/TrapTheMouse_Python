@@ -6,6 +6,7 @@ import json
 
 
 class GameBoardUI(tk.Frame):
+    """Game Board UI Frame """
     HEX_RADIUS = 28
     PADDING = 50
     SAVE_FILE = "saves.json"
@@ -19,6 +20,7 @@ class GameBoardUI(tk.Frame):
     COLOR_WALL_HOVER = "#93c47d"
 
     def __init__(self, master, board):
+        """Constructor"""
         super().__init__(master, bg="#9acd32")
         self.board = board
         self.hovered_cell = None
@@ -57,6 +59,7 @@ class GameBoardUI(tk.Frame):
         self.draw_board()
 
     def _build_side_panel(self):
+        """Build the side panel for the game board , info game ,redo/undo/exit buttons"""
         ttk.Label(self.side, text="Game Info", font=("Arial", 16, "bold")).pack(pady=10)
         ttk.Label
         self.info = ttk.Label(self.side)
@@ -87,12 +90,14 @@ class GameBoardUI(tk.Frame):
         ).pack(pady=10)
 
     def update_info(self):
+        """Updates the game board info"""
         self.info.config(
             text=f"Mode: {self.board.game_type}\nDifficulty: {self.board.difficulty}\nTurn: {self.board.current_player.upper()}"
         )
         self.score.config(text=f"Score: {self.board.score}")
 
     def confirm_exit(self):
+        """Modal for confirming exit button"""
         modal = tk.Toplevel(self)
         modal.title("Confirm Exit")
         modal.geometry("300x200")
@@ -127,22 +132,26 @@ class GameBoardUI(tk.Frame):
         ).pack(pady=5)
 
     def undo_move(self):
+        """Undo move, calls the undo from GameBoard.py"""
         if self.board.undo():
             self.hovered_cell = None
             self.draw_board()
 
     def redo_move(self):
+        """Redo move, calls the redo from GameBoard.py"""
         if self.board.redo():
             self.hovered_cell = None
             self.draw_board()
 
     def _exit(self, modal, save):
+        """Exits the current game"""
         if save:
             self.save_game()
         modal.destroy()
         self.master.show_main_menu()
 
     def save_game(self, exit_after=False):
+        """Save Game modal"""
         modal = tk.Toplevel(self)
         modal.title("Save Game")
         modal.geometry("300x150")
@@ -164,6 +173,7 @@ class GameBoardUI(tk.Frame):
         ).pack(pady=10)
 
     def _save_with_name(self, name, modal, exit_after):
+        """Save game function"""
         if not name.strip():
             return
 
@@ -178,17 +188,20 @@ class GameBoardUI(tk.Frame):
             self.master.show_main_menu()
 
     def on_hover(self, event):
+        """Event handler for hover event"""
         pos = self.pixel_to_hex(event.x, event.y)
         if pos != self.hovered_cell:
             self.hovered_cell = pos
             self.draw_board()
 
     def clear_hover(self, event):
+        """Event handler for clear hover event"""
         if self.hovered_cell is not None:
             self.hovered_cell = None
             self.draw_board()
 
     def draw_board(self):
+        """Draw the game board"""
         self.canvas.delete("all")
 
         valid_mouse_moves = []
@@ -247,6 +260,7 @@ class GameBoardUI(tk.Frame):
         self.update_info()
 
     def draw_hex(self, cx, cy, r, fill):
+        """Draws a hex cell"""
         points = []
         for i in range(6):
             angle = math.radians(60 * i - 30)
@@ -262,6 +276,7 @@ class GameBoardUI(tk.Frame):
         )
 
     def hex_center(self, row, col):
+        """Returns the center of the hex cell"""
         x = self.PADDING + col * self.hex_w
         y = self.PADDING + row * self.hex_h
 
@@ -271,6 +286,7 @@ class GameBoardUI(tk.Frame):
         return x, y
 
     def on_click(self, event):
+        """Event handler for click event"""
         pos = self.pixel_to_hex(event.x, event.y)
         if pos is None:
             return
@@ -317,6 +333,7 @@ class GameBoardUI(tk.Frame):
                     self.draw_board()
 
     def pixel_to_hex(self, x, y):
+        """Returns the hex cell coordinate based on pixel coordinate"""
         for row in range(self.board.SIZE):
             for col in range(self.board.SIZE):
                 cx, cy = self.hex_center(row, col)
@@ -325,6 +342,7 @@ class GameBoardUI(tk.Frame):
         return None
 
     def _load_all_saves(self):
+        """Reader from the json"""
         try:
             with open(self.SAVE_FILE, "r") as f:
                 content = f.read().strip()
@@ -337,13 +355,16 @@ class GameBoardUI(tk.Frame):
             return {}
 
     def _open_save_then_exit(self, confirm_modal):
+        """Save and exit."""
         confirm_modal.destroy()
         self.save_game(exit_after=True)
 
     def _exit_to_menu(self, confirm_modal):
+        """Exit to main menu."""
         confirm_modal.destroy()
         self.master.show_main_menu()
 
     def _write_all_saves(self, data):
+        """Saves to json"""
         with open(self.SAVE_FILE, "w") as f:
             json.dump(data, f, indent=2)
